@@ -1,0 +1,107 @@
+---
+title: "Prediction Assignment"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available [here](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har).
+
+#### Approach
+
+Participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in 5 different fashions:
+
+- exactly according to the specification (Class A) 
+- throwing the elbows to the front (Class B) 
+- lifting the dumbbell only halfway (Class C) 
+- lowering the dumbbell only halfway (Class D) 
+- throwing the hips to the front (Class E)
+
+#### Objectives 
+
+The objective is to predict the manner in which the participants did the exercise (outcome variable: classe).
+Two models will be tested:  
+  
+- Random Forest
+- Decision Tree. 
+
+The model with the highest accuracy will be chosen as the final model.
+
+#### Data
+
+The data are available [here](http://groupware.les.inf.puc-rio.br/har).
+The training data are available [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv).
+The test data are available [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv).
+
+
+Let's load the libraries and get the data.
+
+```{r,message=FALSE,warning=FALSE}
+library(randomForest); library(caret); library(rpart); 
+library(rpart.plot); library(rattle)
+```
+
+```{r}
+training <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!", ""), stringsAsFactors = TRUE)
+testing <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!", ""), stringsAsFactors = TRUE)
+```
+
+#### Data pre-processing
+
+We first remove the unnecessary variables and the NAs.
+```{r}
+training = training[,-c(1:6)]
+training <- training[,!(colSums(is.na(training))>=0.9*nrow(training))]
+```
+
+We randomly split the data into two sets without replacement as follows: 
+
+* training data (60% of the original data set)
+* testing data (40% of the original data set)
+
+```{r}
+set.seed(1988)
+index <- createDataPartition(training$classe, p=0.6, list=FALSE)
+t_train <- training[index, ]
+t_test <- training[-index, ]
+```
+
+#### Model 1: Random Forest
+
+The first model is random forest:
+
+```{r}
+modFit <- randomForest(classe ~ ., t_train, method = "class")
+predictRF <- predict(modFit, t_test, type = "class")
+confusionMatrix(predictRF, t_test$classe)
+```
+
+#### Model 2: Decision tree
+
+The second model is a decision tree:
+
+```{r}
+modFit2 <- rpart(classe ~ ., data = t_train, method = "class")
+predict2 <- predict(modFit2, t_test, type = "class")
+confusionMatrix(predict2, t_test$classe)
+```
+
+#### Comparison between models
+
+The random forest model has an accuracy of 0.9944 while the decision tree model has 0.8007. Therefore we will use the first model to predict the actual data.
+
+#### Predictions
+
+We pre-process the data in the same matter as above and then predict.
+
+```{r}
+testing <- testing[, -c(1:6)]
+testing <- testing[, !(colSums(is.na(testing))>=0.9*nrow(testing))]
+pred_test <- predict(modFit, testing, type = "class")
+pred_test
+```
